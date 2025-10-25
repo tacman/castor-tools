@@ -1,0 +1,24 @@
+{
+    "name": "tacman/castor-tools",
+    "description": "Extend castor with some common tools",
+    "type": "castor-plugin",
+    "require-dev": {
+        "jolicode/castor": "^1.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Tacman\\CastorTools\\": "src/"
+        },
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Tac Tacelosky",
+            "email": "tacman@gmail.com"
+        }
+    ],
+    "require": {}
+}
