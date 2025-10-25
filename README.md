@@ -1,9 +1,6 @@
-# Castor PHP Quality Assurance Tools
+# Common Castor Tasks
 
-This repository contains functions I use during developing Symfony applications.
-
-It does not add command to your castor project, but rather provide a set of functions that should
-work in any environment without having PHP installed only castor is required.
+This repository contains functions and tasks I use during developing Symfony applications and using Castor.
 
 ## Installation
 
@@ -17,5 +14,10 @@ castor composer require tacman/castor-tools
 
     Now import the tasks in your `castor.php` file:
 
+## In action
 
+```bash
+castor sqlite
+castor sqlite --remove
+```
 
