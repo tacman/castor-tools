@@ -4,11 +4,9 @@ namespace Tacman\CastorTools;
 
 use Castor\Attribute\{AsTask, AsOption};
 use function Castor\{io,fs,capture,run};
-use function Tacman\CastorTools\{remove_env,ensure_env};
+use function Tacman\CastorTools\{ensure_env, remove_env};
 
-require 'src/functions.php';
-
-#[AsTask(name: 'sqlite', description: 'Switch to sqlite')]
+#[AsTask(name: 'sqlite', namespace: 'tacman', description: 'Switch to sqlite')]
 function switch_to_sqlite(
     #[\Castor\Attribute\AsOption(description: 'remove the DATABASE_URL key')] bool $remove=false
 ): void

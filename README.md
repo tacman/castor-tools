@@ -17,7 +17,7 @@ castor composer require tacman/castor-tools
 ## In action
 
 ```bash
-castor sqlite
-castor sqlite --remove
+castor tacman:sqlite
+castor tacman:sqlite --remove
 ```
 

@@ -24,6 +24,9 @@ use function Castor\run_php;
  * @param string $value The value to set
  * @return bool Success status
  */
+
+//if (!function_exists('ensure_env')) {
+
 function ensure_env(string $filePath, string $key, string $value): bool
 {
     // Create file if it doesn't exist
@@ -95,3 +98,4 @@ function remove_env(string $filePath, string $key, bool $comment = false): bool
 
     return file_put_contents($filePath, $content) !== false;
 }
+
