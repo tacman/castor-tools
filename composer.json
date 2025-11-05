@@ -11,7 +11,7 @@
             "Tacman\\CastorTools\\": "src/"
         },
         "files": [
-            "src/functions.php"
+            "src/castor.php"
         ]
     },
     "authors": [

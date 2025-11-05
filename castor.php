@@ -6,7 +6,9 @@ use Castor\Attribute\{AsTask, AsOption};
 use function Castor\{io,fs,capture,run};
 use function Tacman\CastorTools\{ensure_env, remove_env};
 
-#[AsTask(name: 'sqlite', namespace: 'tacman', description: 'Switch to sqlite')]
+const CASTOR_TOOLS_NAMESPACE = 'survos';
+
+#[AsTask(name: 'sqlite', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Switch to sqlite')]
 function switch_to_sqlite(
     #[\Castor\Attribute\AsOption(description: 'remove the DATABASE_URL key')] bool $remove=false
 ): void

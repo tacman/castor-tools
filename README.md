@@ -70,7 +70,7 @@ castor <font color="#00CD00">v1.0.0</font>
   Switch to sqlite
 
 <font color="#CDCD00">Usage:</font>
-  tacman:sqlite [options]
+  survos:sqlite [options]
 
 <font color="#CDCD00">Options:</font>
   <font color="#00CD00">    --remove</font>          remove the DATABASE_URL key
@@ -90,7 +90,7 @@ castor <font color="#00CD00">v1.0.0</font>
 castor
 ```
 ```bash
-castor tacman:sqlite
-castor tacman:sqlite --remove
+castor survos:sqlite
+castor survos:sqlite --remove
 ```
 
