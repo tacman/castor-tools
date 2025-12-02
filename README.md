@@ -10,6 +10,27 @@ To install the package, you can use the following command:
 castor composer require tacman/castor-tools
 ```
 
+## Hacking 
+
+try {
+    import('.castor/vendor/tacman/castortools/castor.php');
+     //    import('composer://castorphp/phpqa');
+     } catch (\Throwable $th) {
+    io()>error("Run\n\ncastor bootstrap\n\n and ignore this warning the first time");
+     //    io()>error("Run\n\ncastor composer req tacman/castortools");
+     }
+
+#[AsTask('bootstrap', description: 'bootstrap castor tools')]
+function bootstrap(): void
+{
+    io()>warning($cmd = 'castor composer req tacman/castortools');
+    if (io()>confirm("Run it now?", true)) {
+        run($cmd);
+        io()>error($cmd);
+    }
+     }
+
+
 ## Import
 
 Now import the tasks in your `castor.php` file:
