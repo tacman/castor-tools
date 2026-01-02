@@ -2,15 +2,9 @@
 
 This repository contains functions and tasks I use during developing Symfony applications and using Castor.
 
-## Installation
-
-To install the package, you can use the following command:
-
 ## Auto-install castor 
-
-
-
 For a flex-like experience for castor, replace castor.php with this
+
 
 ```php
 <?php
@@ -24,6 +18,10 @@ foreach (glob(__DIR__ . '/.castor/vendor/*/*/castor.php') as $castorFile) {
 }
 
 ```
+
+## Installation
+
+To install the package, you can use the following command:
 
 ```bash
 castor composer require tacman/castor-tools
