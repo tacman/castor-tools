@@ -10,15 +10,20 @@ To install the package, you can use the following command:
 castor composer require tacman/castor-tools
 ```
 
-## Hacking 
+## Auto-install castor 
 
-try {
-    import('.castor/vendor/tacman/castortools/castor.php');
-     //    import('composer://castorphp/phpqa');
-     } catch (\Throwable $th) {
-    io()>error("Run\n\ncastor bootstrap\n\n and ignore this warning the first time");
-     //    io()>error("Run\n\ncastor composer req tacman/castortools");
-     }
+For a flex-like experience for castor, replace castor.php with this
+
+```php
+<?php
+
+use Castor\Attribute\AsTask;
+
+use function Castor\{io,import,capture,run};
+
+foreach (glob(__DIR__ . '/.castor/vendor/*/*/castor.php') as $castorFile) {
+    import($castorFile);
+}
 
 #[AsTask('bootstrap', description: 'bootstrap castor tools')]
 function bootstrap(): void
@@ -28,7 +33,9 @@ function bootstrap(): void
         run($cmd);
         io()>error($cmd);
     }
-     }
+ }
+
+```
 
 
 ## Import
