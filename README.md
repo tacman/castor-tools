@@ -6,10 +6,6 @@ This repository contains functions and tasks I use during developing Symfony app
 
 To install the package, you can use the following command:
 
-```bash
-castor composer require tacman/castor-tools
-```
-
 ## Auto-install castor 
 
 
@@ -27,32 +23,12 @@ foreach (glob(__DIR__ . '/.castor/vendor/*/*/castor.php') as $castorFile) {
     import($castorFile);
 }
 
-#[AsTask('bootstrap', description: 'bootstrap castor tools')]
-function bootstrap(): void
-{
-    io()>warning($cmd = 'castor composer req tacman/castortools');
-    if (io()>confirm("Run it now?", true)) {
-        run($cmd);
-        io()>error($cmd);
-    }
- }
-
 ```
 
-
-## Import
-
-Now import the tasks in your `castor.php` file:
-
-```php
-<?php
-
-use Castor\Attribute\AsTask;
-
-use function Castor\{import, io, fs, capture, run};
-
-import('.castor/vendor/tacman/castor-tools/castor.php');
+```bash
+castor composer require tacman/castor-tools
 ```
+
 ## In action
 
 <pre>castor
@@ -120,7 +96,7 @@ castor <font color="#00CD00">v1.0.0</font>
 castor
 ```
 ```bash
-castor survos:sqlite
-castor survos:sqlite --remove
+castor tacman:sqlite
+castor tacman:sqlite --remove
 ```
 
