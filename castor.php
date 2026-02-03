@@ -4,9 +4,10 @@ namespace Tacman\CastorTools;
 
 use Castor\Attribute\{AsTask, AsOption};
 use function Castor\{io,fs,capture,run};
-use function Tacman\CastorTools\{ensure_env, remove_env};
+use function Tacman\CastorTools\{ensure_env, remove_env, get_env};
 
-const CASTOR_TOOLS_NAMESPACE = 'survos';
+
+const CASTOR_TOOLS_NAMESPACE = 'tacman';
 
 #[AsTask(name: 'ez-locale', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Add locale menu to easyadmin')]
 function ez_locale(
@@ -31,3 +32,11 @@ function switch_to_sqlite(
     $content = fs()->readFile($fn = '.env.local');
     io()->write($content);
 }
+
+#[AsTask(name: 'opencode', description: 'opencode web on the OPENCODE_PORT env port', namespace: CASTOR_TOOLS_NAMESPACE)]
+function opencode(): void
+{
+    run("opencode web --port=" . get_env('OPENCODE_PORT'));
+}
+
+

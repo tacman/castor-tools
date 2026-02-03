@@ -20,5 +20,7 @@
             "email": "tacman@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "symfony/dotenv": "^7.4"
+    }
 }

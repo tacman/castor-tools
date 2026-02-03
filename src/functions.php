@@ -6,12 +6,43 @@ namespace Tacman\CastorTools;
 use Castor\Import\Remote\ComposerApplication;
 use http\Exception\RuntimeException;
 use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Dotenv\Dotenv;
 
 use function Castor\context;
 use function Castor\fingerprint;
 use function Castor\hasher;
 use function Castor\output;
 use function Castor\run_php;
+
+
+$dotenv = new Dotenv();
+$envDir = (function (?string $startDir = null): ?string {
+    $dir = $startDir ?? getcwd();
+    if ($dir === false) {
+        return null;
+    }
+    $dir = realpath($dir) ?: $dir;
+    while (true) {
+        if (is_file($dir . '/.env')) {
+            return $dir;
+        }
+        $parent = dirname($dir);
+        if ($parent === $dir) {
+            break;
+        }
+        $dir = $parent;
+    }
+    return null;
+})();
+
+if ($envDir !== null) {
+    $dotenv->loadEnv($envDir . '/.env');
+}
+
+function get_env(string $key): mixed
+{
+    return $_ENV[$key] ?? null;
+}
 
 
 /**
@@ -98,4 +129,3 @@ function remove_env(string $filePath, string $key, bool $comment = false): bool
 
     return file_put_contents($filePath, $content) !== false;
 }
-
