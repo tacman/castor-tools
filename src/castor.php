@@ -6,6 +6,8 @@ use Castor\Attribute\{AsTask, AsOption};
 use function Castor\{io,fs,capture,run};
 use function Tacman\CastorTools\{ensure_env, remove_env, get_env};
 
+require_once __DIR__ . '/functions.php';
+
 
 const CASTOR_TOOLS_NAMESPACE = 'tacman';
 
@@ -38,5 +40,4 @@ function opencode(): void
 {
     run("opencode web --port=" . get_env('OPENCODE_PORT'));
 }
-
 

@@ -3,6 +3,7 @@
     "description": "Extend castor with some common tools",
     "type": "castor-plugin",
     "require-dev": {
+        "roave/security-advisories": "dev-latest",
         "jolicode/castor": "^v1.1.0"
     },
     "license": "MIT",
