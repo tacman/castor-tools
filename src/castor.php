@@ -35,9 +35,16 @@ function switch_to_sqlite(
     io()->write($content);
 }
 
-#[AsTask(name: 'opencode', description: 'opencode web on the OPENCODE_PORT env port', namespace: CASTOR_TOOLS_NAMESPACE)]
-function opencode(): void
+#[AsTask(name: 'opencode', description: 'opencode web on the OPENCODE_PORT hash port', namespace: CASTOR_TOOLS_NAMESPACE)]
+function opencode(
+
+): void
 {
-    run("opencode web --port=" . get_env('OPENCODE_PORT'));
+    $dir = getcwd();
+    $hash = hexdec(substr(hash('xxh3', $dir), 0, 8));
+    $port = 11000 + ($hash % 4000);
+
+    io()->note("Starting opencode on port $port (project: " . basename($dir) . ")");
+    run("opencode web --port=$port" );
 }
 
