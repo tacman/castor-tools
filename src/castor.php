@@ -36,15 +36,32 @@ function switch_to_sqlite(
 }
 
 #[AsTask(name: 'opencode', description: 'opencode web on the OPENCODE_PORT hash port', namespace: CASTOR_TOOLS_NAMESPACE)]
-function opencode(
-
-): void
+function opencode(): void
 {
     $dir = getcwd();
     $hash = hexdec(substr(hash('xxh3', $dir), 0, 8));
     $port = 11000 + ($hash % 4000);
+    $url = "http://localhost:$port";
+
+    // Check if already running on this port
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 1,
+        CURLOPT_TIMEOUT => 2,
+        CURLOPT_NOBODY => true,
+    ]);
+    curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode > 0) {
+        io()->note("opencode already running on port $port — opening browser");
+        exec("xdg-open $url 2>/dev/null || open $url 2>/dev/null &");
+        return;
+    }
 
     io()->note("Starting opencode on port $port (project: " . basename($dir) . ")");
-    run("opencode web --port=$port" );
+    run("opencode web --port=$port");
 }
 
