@@ -41,7 +41,7 @@ function opencode(): void
     $dir = getcwd();
     $hash = hexdec(substr(hash('xxh3', $dir), 0, 8));
     $port = 11000 + ($hash % 4000);
-    $url = "http://localhost:$port";
+    $url = "http://127.0.0.1:$port";
 
     // Check if already running on this port
     $ch = curl_init($url);
@@ -53,10 +53,9 @@ function opencode(): void
     ]);
     curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     if ($httpCode > 0) {
-        io()->note("opencode already running on port $port — opening browser");
+        io()->note("opencode already running on port $port — opening $url");
         exec("xdg-open $url 2>/dev/null || open $url 2>/dev/null &");
         return;
     }
