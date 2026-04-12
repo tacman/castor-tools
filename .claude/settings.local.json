@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uvx --version)",
+      "Bash(npx --version)"
+    ]
+  }
+}

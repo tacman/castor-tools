@@ -23,6 +23,7 @@
     ],
     "require": {
         "symfony/dotenv": "^7.4|^8.0",
-      "ext-curl": "*"
+        "ext-curl": "*",
+        "yosymfony/toml": "^1.0"
     }
 }

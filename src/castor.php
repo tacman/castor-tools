@@ -3,6 +3,7 @@
 namespace Tacman\CastorTools;
 
 use Castor\Attribute\{AsTask, AsOption};
+use Yosymfony\Toml\TomlBuilder;
 use function Castor\{io,fs,capture,run};
 use function Tacman\CastorTools\{ensure_env, remove_env, get_env};
 
@@ -12,6 +13,9 @@ require_once __DIR__ . '/functions.php';
 const CASTOR_TOOLS_NAMESPACE = 'tacman';
 
 const OPENCODE_CONFIG_FILE = 'opencode.json';
+const CODEX_CONFIG_FILE = 'codex.toml';
+const CLAUDE_CONFIG_DIR = '.claude';
+const CLAUDE_CONFIG_FILE = '.claude/settings.json';
 const OPENCODE_SCHEMA = 'https://opencode.ai/config.json';
 const DEFAULT_MATE_TIMEOUT_MS = 10000;
 
@@ -125,9 +129,51 @@ function agent_chrome_setup(): void
     ];
 
     write_opencode_config($config);
+    $mcpArray = is_array($config['mcp'] ?? null) ? $config['mcp'] : [];
+    write_codex_config_from_mcp($mcpArray);
+    write_claude_config_from_mcp($mcpArray);
 
-    io()->success('Configured Chrome DevTools MCP in opencode.json.');
+    io()->success('Configured Chrome DevTools MCP in opencode.json, codex.toml, and .claude/settings.json.');
     io()->writeln('Docs: https://github.com/ChromeDevTools/chrome-devtools-mcp?tab=readme-ov-file#mcp');
+}
+
+#[AsTask(name: 'agent:context7:setup', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Enable Context7 MCP for up-to-date library documentation')]
+function agent_context7_setup(): void
+{
+    $config = read_opencode_config();
+    $config['mcp']['context7'] = [
+        'type' => 'local',
+        'command' => ['npx', '-y', '@upstash/context7-mcp@latest'],
+        'enabled' => true,
+        'timeout' => DEFAULT_MATE_TIMEOUT_MS,
+    ];
+
+    write_opencode_config($config);
+    $mcpArray = is_array($config['mcp'] ?? null) ? $config['mcp'] : [];
+    write_codex_config_from_mcp($mcpArray);
+    write_claude_config_from_mcp($mcpArray);
+
+    io()->success('Configured Context7 MCP (library docs) in opencode.json, codex.toml, and .claude/settings.json.');
+}
+
+#[AsTask(name: 'agent:github:setup', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Enable GitHub MCP server (Claude Code only, HTTP transport)')]
+function agent_github_mcp_setup(): void
+{
+    $config = read_opencode_config();
+    $config['mcp']['github'] = [
+        'type' => 'http',
+        'url' => 'https://api.githubcopilot.com/mcp/',
+        'enabled' => true,
+        'timeout' => DEFAULT_MATE_TIMEOUT_MS,
+    ];
+
+    write_opencode_config($config);
+    $mcpArray = is_array($config['mcp'] ?? null) ? $config['mcp'] : [];
+    write_codex_config_from_mcp($mcpArray);
+    write_claude_config_from_mcp($mcpArray);
+
+    io()->success('Configured GitHub MCP in .claude/settings.json (Claude Code only — HTTP transport).');
+    io()->note('Run /mcp inside Claude Code to authenticate with GitHub.');
 }
 
 #[AsTask(name: 'agent:api:mcp:enable', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Enable API Platform MCP server in opencode config when available')]
@@ -150,11 +196,14 @@ function agent_api_mcp_enable(
     ];
 
     write_opencode_config($config);
+    $mcpArray = is_array($config['mcp'] ?? null) ? $config['mcp'] : [];
+    write_codex_config_from_mcp($mcpArray);
+    write_claude_config_from_mcp($mcpArray);
 
     io()->success(sprintf('Configured API Platform MCP endpoint: %s', $url));
 }
 
-#[AsTask(name: 'agent:setup', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Bootstrap OpenCode agent surfaces (Mate, Chrome, API MCP)')]
+#[AsTask(name: 'agent:setup', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Bootstrap agent MCP servers for OpenCode, Codex, and Claude Code')]
 function agent_setup(
     #[AsOption(description: 'MCP endpoint URL to use for API Platform')] string $apiMcpUrl = 'http://127.0.0.1:8000/mcp'
 ): void
@@ -166,14 +215,17 @@ function agent_setup(
     agent_mate_discover();
     configure_mate_mcp_server();
     agent_chrome_setup();
+    agent_context7_setup();
+    agent_github_mcp_setup();
     agent_api_mcp_enable($apiMcpUrl);
 
     io()->newLine();
-    io()->success('Setup complete.');
+    io()->success('Setup complete. Config written to opencode.json, codex.toml, and .claude/settings.json.');
     io()->writeln('Verify with:');
     io()->writeln('  vendor/bin/mate debug:extensions --show-all');
     io()->writeln('  vendor/bin/mate mcp:tools:list');
     io()->writeln('  opencode mcp list');
+    io()->writeln('  claude mcp list');
 }
 
 #[AsTask(name: 'agent:doctor', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Check local agent surfaces and MCP config')]
@@ -190,8 +242,12 @@ function agent_doctor(): void
     io()->writeln('composer.json: ' . (is_file($composerPath) ? 'yes' : 'no'));
     io()->writeln('Mate installed: ' . (is_file($mateBin) ? 'yes' : 'no'));
     io()->writeln('API Platform present: ' . (api_platform_installed() ? 'yes' : 'no'));
+    io()->writeln('codex.toml present: ' . (is_file($cwd . '/' . CODEX_CONFIG_FILE) ? 'yes' : 'no'));
+    io()->writeln('.claude/settings.json present: ' . (is_file($cwd . '/' . CLAUDE_CONFIG_FILE) ? 'yes' : 'no'));
     io()->writeln('Chrome MCP configured: ' . (isset($mcp['chrome-devtools']) ? 'yes' : 'no'));
     io()->writeln('Symfony Mate MCP configured: ' . (isset($mcp['symfony-mate']) ? 'yes' : 'no'));
+    io()->writeln('Context7 MCP configured: ' . (isset($mcp['context7']) ? 'yes' : 'no'));
+    io()->writeln('GitHub MCP configured: ' . (isset($mcp['github']) ? 'yes' : 'no'));
     io()->writeln('API Platform MCP configured: ' . (isset($mcp['api-platform']) ? 'yes' : 'no'));
 
     if (empty($mcp)) {
@@ -237,7 +293,10 @@ function configure_mate_mcp_server(): void
     ];
 
     write_opencode_config($config);
-    io()->success('Configured Symfony Mate MCP in opencode.json.');
+    $mcpArray = is_array($config['mcp'] ?? null) ? $config['mcp'] : [];
+    write_codex_config_from_mcp($mcpArray);
+    write_claude_config_from_mcp($mcpArray);
+    io()->success('Configured Symfony Mate MCP in opencode.json, codex.toml, and .claude/settings.json.');
 }
 
 function read_opencode_config(): array
@@ -297,6 +356,130 @@ function write_opencode_config(array $config): void
     $json .= "\n";
 
     file_put_contents(getcwd() . '/' . OPENCODE_CONFIG_FILE, $json);
+}
+
+function write_codex_config_from_mcp(array $mcp): void
+{
+    $builder = new TomlBuilder();
+    $builder
+        ->addValue('model', 'gpt-5-codex')
+        ->addValue('model_reasoning_effort', 'high')
+        ->addValue('approval_policy', 'on-failure')
+        ->addValue('sandbox_mode', 'workspace-write');
+
+    foreach ($mcp as $name => $server) {
+        if (!is_string($name) || !is_array($server)) {
+            continue;
+        }
+
+        $type = is_string($server['type'] ?? null) ? $server['type'] : null;
+        // Codex only supports local (stdio) and remote — skip http-only servers
+        if ($type === 'http') {
+            continue;
+        }
+
+        $builder->addTable('mcp_servers.' . $name);
+
+        $type = is_string($server['type'] ?? null) ? $server['type'] : null;
+        if ($type === 'remote' && is_string($server['url'] ?? null)) {
+            $builder->addValue('url', $server['url']);
+        } elseif ($type === 'local' && is_array($server['command'] ?? null) && isset($server['command'][0]) && is_string($server['command'][0])) {
+            $command = $server['command'];
+            $binary = array_shift($command);
+            $builder->addValue('command', $binary);
+
+            $args = [];
+            foreach ($command as $arg) {
+                if (is_string($arg)) {
+                    $args[] = $arg;
+                }
+            }
+            $builder->addValue('args', $args);
+        }
+
+        if (isset($server['enabled']) && is_bool($server['enabled'])) {
+            $builder->addValue('enabled', $server['enabled']);
+        }
+
+        if (isset($server['timeout']) && is_int($server['timeout'])) {
+            $builder->addValue('startup_timeout_ms', $server['timeout']);
+            $builder->addValue('tool_timeout_ms', $server['timeout']);
+        }
+    }
+
+    $toml = $builder->getTomlString();
+    if (!str_ends_with($toml, "\n")) {
+        $toml .= "\n";
+    }
+
+    file_put_contents(getcwd() . '/' . CODEX_CONFIG_FILE, $toml);
+}
+
+function write_claude_config_from_mcp(array $mcp): void
+{
+    $configDir = getcwd() . '/' . CLAUDE_CONFIG_DIR;
+    $configPath = getcwd() . '/' . CLAUDE_CONFIG_FILE;
+
+    $config = [];
+    if (is_file($configPath)) {
+        $raw = file_get_contents($configPath);
+        if (is_string($raw) && trim($raw) !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $config = $decoded;
+            }
+        }
+    }
+
+    $mcpServers = [];
+    foreach ($mcp as $name => $server) {
+        if (!is_string($name) || !is_array($server)) {
+            continue;
+        }
+
+        $type = is_string($server['type'] ?? null) ? $server['type'] : null;
+        if ($type === 'http' && is_string($server['url'] ?? null)) {
+            $mcpServers[$name] = [
+                'type' => 'http',
+                'url' => $server['url'],
+            ];
+        } elseif ($type === 'remote' && is_string($server['url'] ?? null)) {
+            $mcpServers[$name] = [
+                'type' => 'sse',
+                'url' => $server['url'],
+            ];
+        } elseif ($type === 'local' && is_array($server['command'] ?? null) && isset($server['command'][0]) && is_string($server['command'][0])) {
+            $command = $server['command'];
+            $binary = array_shift($command);
+            $args = [];
+            foreach ($command as $arg) {
+                if (is_string($arg)) {
+                    $args[] = $arg;
+                }
+            }
+            $mcpServers[$name] = [
+                'type' => 'stdio',
+                'command' => $binary,
+                'args' => $args,
+            ];
+        }
+    }
+
+    $config['mcpServers'] = $mcpServers;
+
+    if (!is_dir($configDir)) {
+        mkdir($configDir, 0755, true);
+    }
+
+    $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if (!is_string($json)) {
+        io()->error('Failed to encode Claude config as JSON.');
+
+        return;
+    }
+    $json .= "\n";
+
+    file_put_contents($configPath, $json);
 }
 
 function api_platform_installed(): bool
