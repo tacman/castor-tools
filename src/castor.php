@@ -16,6 +16,9 @@ const OPENCODE_CONFIG_FILE = 'opencode.json';
 const CODEX_CONFIG_FILE = 'codex.toml';
 const CLAUDE_CONFIG_DIR = '.claude';
 const CLAUDE_CONFIG_FILE = '.claude/settings.json';
+const CLAUDE_GLOBAL_CONFIG_DIR = '/.claude';
+const CLAUDE_GLOBAL_CONFIG_FILE = '/.claude/settings.json';
+const CLAUDE_GLOBAL_MCP_SERVERS = ['chrome-devtools', 'context7', 'github'];
 const OPENCODE_SCHEMA = 'https://opencode.ai/config.json';
 const DEFAULT_MATE_TIMEOUT_MS = 10000;
 
@@ -133,7 +136,7 @@ function agent_chrome_setup(): void
     write_codex_config_from_mcp($mcpArray);
     write_claude_config_from_mcp($mcpArray);
 
-    io()->success('Configured Chrome DevTools MCP in opencode.json, codex.toml, and .claude/settings.json.');
+    io()->success('Configured Chrome DevTools MCP in opencode.json, codex.toml, and ~/.claude/settings.json (global).');
     io()->writeln('Docs: https://github.com/ChromeDevTools/chrome-devtools-mcp?tab=readme-ov-file#mcp');
 }
 
@@ -153,7 +156,7 @@ function agent_context7_setup(): void
     write_codex_config_from_mcp($mcpArray);
     write_claude_config_from_mcp($mcpArray);
 
-    io()->success('Configured Context7 MCP (library docs) in opencode.json, codex.toml, and .claude/settings.json.');
+    io()->success('Configured Context7 MCP (library docs) in opencode.json, codex.toml, and ~/.claude/settings.json (global).');
 }
 
 #[AsTask(name: 'agent:github:setup', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Enable GitHub MCP server (Claude Code only, HTTP transport)')]
@@ -172,7 +175,7 @@ function agent_github_mcp_setup(): void
     write_codex_config_from_mcp($mcpArray);
     write_claude_config_from_mcp($mcpArray);
 
-    io()->success('Configured GitHub MCP in .claude/settings.json (Claude Code only — HTTP transport).');
+    io()->success('Configured GitHub MCP in ~/.claude/settings.json (global, Claude Code only — HTTP transport).');
     io()->note('Run /mcp inside Claude Code to authenticate with GitHub.');
 }
 
@@ -417,12 +420,67 @@ function write_codex_config_from_mcp(array $mcp): void
 
 function write_claude_config_from_mcp(array $mcp): void
 {
-    $configDir = getcwd() . '/' . CLAUDE_CONFIG_DIR;
-    $configPath = getcwd() . '/' . CLAUDE_CONFIG_FILE;
+    $globalServers = [];
+    $projectServers = [];
 
+    foreach ($mcp as $name => $server) {
+        if (!is_string($name) || !is_array($server)) {
+            continue;
+        }
+
+        $entry = mcp_to_claude_entry($server);
+        if ($entry === null) {
+            continue;
+        }
+
+        if (in_array($name, CLAUDE_GLOBAL_MCP_SERVERS, true)) {
+            $globalServers[$name] = $entry;
+        } else {
+            $projectServers[$name] = $entry;
+        }
+    }
+
+    $home = getenv('HOME') ?: ($_SERVER['HOME'] ?? '');
+    if ($home !== '') {
+        write_claude_settings_file($home . CLAUDE_GLOBAL_CONFIG_DIR, $home . CLAUDE_GLOBAL_CONFIG_FILE, $globalServers);
+    }
+
+    write_claude_settings_file(getcwd() . '/' . CLAUDE_CONFIG_DIR, getcwd() . '/' . CLAUDE_CONFIG_FILE, $projectServers);
+}
+
+function mcp_to_claude_entry(array $server): ?array
+{
+    $type = is_string($server['type'] ?? null) ? $server['type'] : null;
+
+    if ($type === 'http' && is_string($server['url'] ?? null)) {
+        return ['type' => 'http', 'url' => $server['url']];
+    }
+
+    if ($type === 'remote' && is_string($server['url'] ?? null)) {
+        return ['type' => 'sse', 'url' => $server['url']];
+    }
+
+    if ($type === 'local' && is_array($server['command'] ?? null) && isset($server['command'][0]) && is_string($server['command'][0])) {
+        $command = $server['command'];
+        $binary = array_shift($command);
+        $args = [];
+        foreach ($command as $arg) {
+            if (is_string($arg)) {
+                $args[] = $arg;
+            }
+        }
+
+        return ['type' => 'stdio', 'command' => $binary, 'args' => $args];
+    }
+
+    return null;
+}
+
+function write_claude_settings_file(string $dir, string $path, array $mcpServers): void
+{
     $config = [];
-    if (is_file($configPath)) {
-        $raw = file_get_contents($configPath);
+    if (is_file($path)) {
+        $raw = file_get_contents($path);
         if (is_string($raw) && trim($raw) !== '') {
             $decoded = json_decode($raw, true);
             if (is_array($decoded)) {
@@ -431,55 +489,23 @@ function write_claude_config_from_mcp(array $mcp): void
         }
     }
 
-    $mcpServers = [];
-    foreach ($mcp as $name => $server) {
-        if (!is_string($name) || !is_array($server)) {
-            continue;
-        }
+    // Merge new servers into existing, preserving any manually added ones
+    $existing = is_array($config['mcpServers'] ?? null) ? $config['mcpServers'] : [];
+    $config['mcpServers'] = array_merge($existing, $mcpServers);
 
-        $type = is_string($server['type'] ?? null) ? $server['type'] : null;
-        if ($type === 'http' && is_string($server['url'] ?? null)) {
-            $mcpServers[$name] = [
-                'type' => 'http',
-                'url' => $server['url'],
-            ];
-        } elseif ($type === 'remote' && is_string($server['url'] ?? null)) {
-            $mcpServers[$name] = [
-                'type' => 'sse',
-                'url' => $server['url'],
-            ];
-        } elseif ($type === 'local' && is_array($server['command'] ?? null) && isset($server['command'][0]) && is_string($server['command'][0])) {
-            $command = $server['command'];
-            $binary = array_shift($command);
-            $args = [];
-            foreach ($command as $arg) {
-                if (is_string($arg)) {
-                    $args[] = $arg;
-                }
-            }
-            $mcpServers[$name] = [
-                'type' => 'stdio',
-                'command' => $binary,
-                'args' => $args,
-            ];
-        }
-    }
-
-    $config['mcpServers'] = $mcpServers;
-
-    if (!is_dir($configDir)) {
-        mkdir($configDir, 0755, true);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
     }
 
     $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if (!is_string($json)) {
-        io()->error('Failed to encode Claude config as JSON.');
+        io()->error('Failed to encode Claude config as JSON: ' . $path);
 
         return;
     }
     $json .= "\n";
 
-    file_put_contents($configPath, $json);
+    file_put_contents($path, $json);
 }
 
 function api_platform_installed(): bool
