@@ -14,11 +14,10 @@ const CASTOR_TOOLS_NAMESPACE = 'tacman';
 
 const OPENCODE_CONFIG_FILE = 'opencode.json';
 const CODEX_CONFIG_FILE = 'codex.toml';
-const CLAUDE_CONFIG_DIR = '.claude';
-const CLAUDE_CONFIG_FILE = '.claude/settings.json';
-const CLAUDE_GLOBAL_CONFIG_DIR = '/.claude';
-const CLAUDE_GLOBAL_CONFIG_FILE = '/.claude/settings.json';
+const CLAUDE_PROJECT_MCP_FILE = '.mcp.json';
+const CLAUDE_GLOBAL_MCP_FILE = '/.claude.json';
 const CLAUDE_GLOBAL_MCP_SERVERS = ['chrome-devtools', 'context7', 'github'];
+const SYMFONY_PROXY_CONFIG = '/.symfony5/proxy.json';
 const OPENCODE_SCHEMA = 'https://opencode.ai/config.json';
 const DEFAULT_MATE_TIMEOUT_MS = 10000;
 
@@ -246,7 +245,7 @@ function agent_doctor(): void
     io()->writeln('Mate installed: ' . (is_file($mateBin) ? 'yes' : 'no'));
     io()->writeln('API Platform present: ' . (api_platform_installed() ? 'yes' : 'no'));
     io()->writeln('codex.toml present: ' . (is_file($cwd . '/' . CODEX_CONFIG_FILE) ? 'yes' : 'no'));
-    io()->writeln('.claude/settings.json present: ' . (is_file($cwd . '/' . CLAUDE_CONFIG_FILE) ? 'yes' : 'no'));
+    io()->writeln('.mcp.json present: ' . (is_file($cwd . '/' . CLAUDE_PROJECT_MCP_FILE) ? 'yes' : 'no'));
     io()->writeln('Chrome MCP configured: ' . (isset($mcp['chrome-devtools']) ? 'yes' : 'no'));
     io()->writeln('Symfony Mate MCP configured: ' . (isset($mcp['symfony-mate']) ? 'yes' : 'no'));
     io()->writeln('Context7 MCP configured: ' . (isset($mcp['context7']) ? 'yes' : 'no'));
@@ -442,10 +441,10 @@ function write_claude_config_from_mcp(array $mcp): void
 
     $home = getenv('HOME') ?: ($_SERVER['HOME'] ?? '');
     if ($home !== '') {
-        write_claude_settings_file($home . CLAUDE_GLOBAL_CONFIG_DIR, $home . CLAUDE_GLOBAL_CONFIG_FILE, $globalServers);
+        write_claude_mcp_file($home . CLAUDE_GLOBAL_MCP_FILE, $globalServers);
     }
 
-    write_claude_settings_file(getcwd() . '/' . CLAUDE_CONFIG_DIR, getcwd() . '/' . CLAUDE_CONFIG_FILE, $projectServers);
+    write_claude_mcp_file(getcwd() . '/' . CLAUDE_PROJECT_MCP_FILE, $projectServers);
 }
 
 function mcp_to_claude_entry(array $server): ?array
@@ -476,7 +475,7 @@ function mcp_to_claude_entry(array $server): ?array
     return null;
 }
 
-function write_claude_settings_file(string $dir, string $path, array $mcpServers): void
+function write_claude_mcp_file(string $path, array $mcpServers): void
 {
     $config = [];
     if (is_file($path)) {
@@ -492,10 +491,6 @@ function write_claude_settings_file(string $dir, string $path, array $mcpServers
     // Merge new servers into existing, preserving any manually added ones
     $existing = is_array($config['mcpServers'] ?? null) ? $config['mcpServers'] : [];
     $config['mcpServers'] = array_merge($existing, $mcpServers);
-
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
-    }
 
     $json = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if (!is_string($json)) {
