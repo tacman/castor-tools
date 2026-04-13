@@ -180,13 +180,23 @@ function agent_github_mcp_setup(): void
 
 #[AsTask(name: 'agent:api:mcp:enable', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Enable API Platform MCP server in opencode config when available')]
 function agent_api_mcp_enable(
-    #[AsOption(description: 'MCP endpoint URL to use')] string $url = 'http://127.0.0.1:8000/mcp'
+    #[AsOption(description: 'MCP endpoint URL to use (auto-detected from Symfony proxy if omitted)')] string $url = ''
 ): void
 {
     if (!api_platform_installed()) {
         io()->warning('API Platform not detected in composer.json (api-platform/*). Skipping MCP config.');
 
         return;
+    }
+
+    if ($url === '') {
+        $proxyDomain = detect_symfony_proxy_domain();
+        if ($proxyDomain !== null) {
+            $url = 'https://' . $proxyDomain . '/mcp';
+        } else {
+            $url = 'http://127.0.0.1:8000/mcp';
+            io()->warning('Could not detect Symfony proxy domain. Falling back to ' . $url);
+        }
     }
 
     $config = read_opencode_config();
@@ -207,7 +217,7 @@ function agent_api_mcp_enable(
 
 #[AsTask(name: 'agent:setup', namespace: CASTOR_TOOLS_NAMESPACE, description: 'Bootstrap agent MCP servers for OpenCode, Codex, and Claude Code')]
 function agent_setup(
-    #[AsOption(description: 'MCP endpoint URL to use for API Platform')] string $apiMcpUrl = 'http://127.0.0.1:8000/mcp'
+    #[AsOption(description: 'MCP endpoint URL for API Platform (auto-detected from Symfony proxy if omitted)')] string $apiMcpUrl = ''
 ): void
 {
     io()->title('Agent surface setup');
@@ -222,7 +232,7 @@ function agent_setup(
     agent_api_mcp_enable($apiMcpUrl);
 
     io()->newLine();
-    io()->success('Setup complete. Config written to opencode.json, codex.toml, and .claude/settings.json.');
+    io()->success('Setup complete. Config written to opencode.json, codex.toml, .mcp.json, and ~/.claude.json.');
     io()->writeln('Verify with:');
     io()->writeln('  vendor/bin/mate debug:extensions --show-all');
     io()->writeln('  vendor/bin/mate mcp:tools:list');
@@ -298,7 +308,7 @@ function configure_mate_mcp_server(): void
     $mcpArray = is_array($config['mcp'] ?? null) ? $config['mcp'] : [];
     write_codex_config_from_mcp($mcpArray);
     write_claude_config_from_mcp($mcpArray);
-    io()->success('Configured Symfony Mate MCP in opencode.json, codex.toml, and .claude/settings.json.');
+    io()->success('Configured Symfony Mate MCP in opencode.json, codex.toml, and .mcp.json.');
 }
 
 function read_opencode_config(): array
@@ -501,6 +511,48 @@ function write_claude_mcp_file(string $path, array $mcpServers): void
     $json .= "\n";
 
     file_put_contents($path, $json);
+}
+
+function detect_symfony_proxy_domain(): ?string
+{
+    $home = getenv('HOME') ?: ($_SERVER['HOME'] ?? '');
+    if ($home === '') {
+        return null;
+    }
+
+    $proxyPath = $home . SYMFONY_PROXY_CONFIG;
+    if (!is_file($proxyPath)) {
+        return null;
+    }
+
+    $raw = file_get_contents($proxyPath);
+    if (!is_string($raw) || trim($raw) === '') {
+        return null;
+    }
+
+    $proxy = json_decode($raw, true);
+    if (!is_array($proxy)) {
+        return null;
+    }
+
+    $tld = is_string($proxy['tld'] ?? null) ? $proxy['tld'] : 'wip';
+    $domains = is_array($proxy['domains'] ?? null) ? $proxy['domains'] : [];
+    $cwd = getcwd();
+
+    foreach ($domains as $domain => $dir) {
+        if (!is_string($domain) || !is_string($dir)) {
+            continue;
+        }
+        // Resolve ~ in paths
+        if (str_starts_with($dir, '~/')) {
+            $dir = $home . substr($dir, 1);
+        }
+        if (realpath($dir) === realpath($cwd)) {
+            return $domain . '.' . $tld;
+        }
+    }
+
+    return null;
 }
 
 function api_platform_installed(): bool

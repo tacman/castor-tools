@@ -39,12 +39,13 @@ All tasks use `#[AsTask]` PHP 8 attributes and are namespaced under `tacman:` vi
 
 ### Config File Generation
 
-The agent setup tasks maintain three parallel config files in the consuming project's root:
+The agent setup tasks maintain config files across multiple tools:
 - **`opencode.json`** — MCP server definitions for OpenCode (canonical source, read/write via helper functions)
 - **`codex.toml`** — Generated from `opencode.json`'s MCP section using `yosymfony/toml`
-- **`.claude/settings.json`** — Generated from `opencode.json`'s MCP section for Claude Code
+- **`.mcp.json`** — Project-level MCP servers for Claude Code (symfony-mate, api-platform)
+- **`~/.claude.json`** — Global MCP servers for Claude Code (chrome-devtools, context7, github)
 
-All three are always written together when MCP configuration changes. The `http` transport type (used by GitHub MCP) is only supported by Claude Code — codex and opencode writers skip it.
+All are written together when MCP configuration changes. The `http` transport type (used by GitHub MCP) is only supported by Claude Code — codex and opencode writers skip it. The API Platform MCP URL is auto-detected from the Symfony proxy (`~/.symfony5/proxy.json`) to use stable `*.wip` domains instead of hardcoded ports.
 
 ## Conventions
 
